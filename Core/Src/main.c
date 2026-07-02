@@ -553,8 +553,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     static uint32_t counter;
     counter++;
 
-    uint8_t buffer[50];
-    uint32_t size = snprintf(buffer, 50, )
+    char buffer[50];
+
 
     raw_adc_value = HAL_ADC_GetValue(&hadc1);
     // if ( huart2.gState == HAL_UART_STATE_READY)
@@ -563,8 +563,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     if ( raw_adc_value < 10U && counter >= 4U) {
         if ( prev > 10U) {
           counter = 0;
-          HAL_UART_Transmit_IT(&huart2, buffer, sizeof(buffer) - 1U);
-          getCurrentLedState(CHANGE);
+          LedState ls = getCurrentLedState(CHANGE);
+          int32_t size = snprintf(buffer, 50, "State: %d \r \n ", ls);
+          HAL_UART_Transmit_IT(&huart2, (uint8_t*)buffer, size);
+
         }
     }
     prev = raw_adc_value;
