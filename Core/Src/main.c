@@ -40,8 +40,7 @@ typedef enum {
 }LedState;
 
 typedef enum {
-  CHANGE,
-  READ,
+	CHANGE,READ, LONG_PRESS
 
 
 
@@ -64,15 +63,12 @@ const int32_t DOWNWARD = -1;
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define DEBOUNCE_TIME_DELAY 100
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
-
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
-TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart2;
 
@@ -84,10 +80,8 @@ UART_HandleTypeDef huart2;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
-static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -130,14 +124,13 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_ADC1_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
-  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim3);
-  HAL_TIM_Base_Start_IT(&htim4);
+  // HAL_TIM_Base_Start_IT(&htim4);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+
 
   // uint32_t tick1 = HAL_GetTick();
   /* USER CODE END 2 */
@@ -146,6 +139,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+  	__WFI();
     // uint32_t tick2 = HAL_GetTick();
     //
     // if ( tick2 - tick1 > 200) {
@@ -215,58 +209,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief ADC1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_ADC1_Init(void)
-{
-
-  /* USER CODE BEGIN ADC1_Init 0 */
-
-  /* USER CODE END ADC1_Init 0 */
-
-  ADC_ChannelConfTypeDef sConfig = {0};
-
-  /* USER CODE BEGIN ADC1_Init 1 */
-
-  /* USER CODE END ADC1_Init 1 */
-
-  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
-  */
-  hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
-  hadc1.Init.Resolution = ADC_RESOLUTION_6B;
-  hadc1.Init.ScanConvMode = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  if (HAL_ADC_Init(&hadc1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
-  */
-  sConfig.Channel = ADC_CHANNEL_0;
-  sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN ADC1_Init 2 */
-
-  /* USER CODE END ADC1_Init 2 */
-
 }
 
 /**
@@ -389,51 +331,6 @@ static void MX_TIM3_Init(void)
 }
 
 /**
-  * @brief TIM4 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM4_Init(void)
-{
-
-  /* USER CODE BEGIN TIM4_Init 0 */
-
-  /* USER CODE END TIM4_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM4_Init 1 */
-
-  /* USER CODE END TIM4_Init 1 */
-  htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 839;
-  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 2000;
-  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM4_Init 2 */
-
-  /* USER CODE END TIM4_Init 2 */
-
-}
-
-/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -493,12 +390,22 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PA0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pin : PA8 */
   GPIO_InitStruct.Pin = GPIO_PIN_8;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -508,76 +415,117 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 
+
+
+
 LedState getCurrentLedState(action ac) {
-    static volatile LedState currentState = BREATHING;
+		__disable_irq();
+	    static volatile LedState currentState = BREATHING;
 
-    if ( ac == CHANGE) {
-      switch ( currentState) {
-        case BREATHING:
-          currentState = OFF;
-          break;
-        case OFF:
-          currentState = LOW;
-          break;
-        case LOW:
-          currentState = MEDIUM;
-          break;
-        case MEDIUM:
-          currentState = HIGH;
-          break;
-        case HIGH:
-          currentState = BREATHING;
-          break;
-        default: ;
-      }
-    }
-
-
-      return currentState;
-  }
-
+	    if ( ac == CHANGE) {
+	      switch ( currentState) {
+	        case BREATHING:
+	          currentState = OFF;
+	          break;
+	        case OFF:
+	          currentState = LOW;
+	          break;
+	        case LOW:
+	          currentState = MEDIUM;
+	          break;
+	        case MEDIUM:
+	          currentState = HIGH;
+	          break;
+	        case HIGH:
+	          currentState = BREATHING;
+	          break;
+	        default: ;
+	      }
+	    }else if ( ac ==  LONG_PRESS) {
+		    currentState = OFF;
+	    }
 
 
 
+		__enable_irq();
+
+		return currentState;
+}
+
+/*
+ *	@brief changing led state if button was pressed more than debouce time age
+ *
+ *
+ */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 
-
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-
-    static uint32_t prev;
-
-    uint32_t raw_adc_value = 0;
+		static uint32_t timer_start = 0U;
 
 
+	    static uint32_t lastPressedTime = 0U;
+		uint32_t currentPress = HAL_GetTick();
+		if (currentPress - lastPressedTime > DEBOUNCE_TIME_DELAY) {
+			if ( HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == 0) {
+				timer_start = HAL_GetTick();
+			} else if ( HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == 1) {
 
-    static uint32_t counter;
-    counter++;
+				if ( HAL_GetTick() - timer_start > 1000) {
+					getCurrentLedState(LONG_PRESS);
+					lastPressedTime = currentPress;
+				}
+				else if ( GPIO_Pin == GPIO_PIN_0) {
+					getCurrentLedState(CHANGE);
+					lastPressedTime = currentPress;
+				}
 
-    char buffer[50];
-
-
-    raw_adc_value = HAL_ADC_GetValue(&hadc1);
-    // if ( huart2.gState == HAL_UART_STATE_READY)
-    //     HAL_UART_Transmit_IT(&huart2, buffer, sizeof(buffer) - 1U);
-
-    if ( raw_adc_value < 10U && counter >= 4U) {
-        if ( prev > 10U) {
-          counter = 0;
-          LedState ls = getCurrentLedState(CHANGE);
-          int32_t size = snprintf(buffer, 50, "State: %d \r \n ", ls);
-          HAL_UART_Transmit_IT(&huart2, (uint8_t*)buffer, size);
-
-        }
-    }
-    prev = raw_adc_value;
-
-
-
+			}
+		}
 
 
 
 
 }
+
+
+
+
+// void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+//
+//     static uint32_t prev;
+//
+//     uint32_t raw_adc_value = 0;
+//
+//
+//
+//     static uint32_t counter;
+//     counter++;
+//
+//     char buffer[50];
+//
+//
+//     raw_adc_value = HAL_ADC_GetValue(&hadc1);
+//     // if ( huart2.gState == HAL_UART_STATE_READY)
+//     //     HAL_UART_Transmit_IT(&huart2, buffer, sizeof(buffer) - 1U);
+//
+//     if ( raw_adc_value < 10U && counter >= 4U) {
+//         if ( prev > 10U) {
+//           counter = 0;
+//           LedState ls = getCurrentLedState(CHANGE);
+//           int32_t size = snprintf(buffer, 50, "State: %d \r \n ", ls);
+//           HAL_UART_Transmit_IT(&huart2, (uint8_t*)buffer, size);
+//
+//         }
+//     }
+//     prev = raw_adc_value;
+//
+//
+//
+//
+//
+//
+//
+// }
 
 
 
@@ -588,22 +536,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 
 
-
-    if (htim->Instance == TIM4) {
-
-      HAL_ADC_Start_IT(&hadc1);
-      
-    }
-
     if (htim->Instance == TIM3) {
 
-        LedState currentState = getCurrentLedState(READ);
+
+
+    	LedState currentState = getCurrentLedState(READ);
+
+    	LedState local_state = currentState;
+
 
         static int32_t brightness = 0;
         static int32_t direction = 1;
-        switch (currentState) {
+        switch (local_state) {
           case OFF:
             brightness = 0;
+            
+
             break;
           case LOW:
             brightness = 250;
